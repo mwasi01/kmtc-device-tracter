@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D-1.1 (VERSION 2) KMTC Tracker</title>
+    <style>
+        /* General Styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e2f;
+            color: #f0f0f5;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin: 20px 0;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+            color: #00ffff;
+            z-index: 2;
+        }
+
+        #map {
+            height: 70vh;
+            width: 90%;
+            border-radius: 12px;
+            box-shadow: 0px 0px 15px 3px rgba(0, 255, 255, 0.3);
+            border: 2px solid #00ffff;
+            z-index: 2;
+            margin-bottom: 20px;
+        }
+
+        #scanning {
+            font-size: 1.2em;
+            color: #00ffff;
+            animation: flicker 1.2s infinite;
+            margin-top: 10px;
+            z-index: 2;
+        }
+
+        /* Background Matrix Animation */
+        .matrix-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .matrix-column {
+            font-family: monospace;
+            font-size: 1em;
+            color: rgba(0, 255, 0, 0.6);
+            white-space: nowrap;
+            overflow: hidden;
+            display: inline-block;
+            animation: scroll 5s linear infinite;
+        }
+
+        @keyframes scroll {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* Scanning Animation */
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Button Style */
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            z-index: 2;
+        }
+
+        button {
+            background: #3333ff;
+            border: none;
+            padding: 10px 20px;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+
+        button:hover {
+            background: #00ffff;
+            color: #1e1e2f;
+        }
+
+        /* Form Styling */
+        .device-form {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            background: #1e1e2f;
+            padding: 15px;
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            box-shadow: 0px 0px 15px rgba(0, 255, 255, 0.3);
+            z-index: 2;
+            margin-bottom: 20px;
+            width: 80%;
+        }
+
+        .device-form label, .device-form input {
+            color: #f0f0f5;
+            margin: 5px 0;
+            font-size: 1em;
+        }
+
+        .device-form input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #3333ff;
+            background-color: #333333;
+            color: #f0f0f5;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body>
+    <h1>D-1.1 (VERSION 2) KMTC Tracker</h1>
+    <div id="scanning">Encrypting device data...</div>
+    
+    <!-- Device Entry Form -->
+    <div class="device-form">
+        <label for="deviceName">Device Name:</label>
+        <input type="text" id="deviceName" placeholder="Enter device name" required>
+        
+        <label for="latitude">Latitude:</label>
+        <input type="number" id="latitude" placeholder="Enter latitude" required>
+        
+        <label for="longitude">Longitude:</label>
+        <input type="number" id="longitude" placeholder="Enter longitude" required>
+        
+        <button onclick="addDeviceMarker()">Add Device Location</button>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="matrix-bg" id="matrixBg"></div>
+
+    <script>
+        // Initialize OpenStreetMap with Leaflet
+        const map = L.map('map').setView([-1.2921, 36.8219], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // Function to add a new device marker to the map
+        function addDeviceMarker() {
+            const deviceName = document.getElementById('deviceName').value;
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+
+            if (deviceName && !isNaN(latitude) && !isNaN(longitude)) {
+                L.marker([latitude, longitude]).addTo(map)
+                    .bindPopup(`<b>${deviceName}</b><br>Latitude: ${latitude}<br>Longitude: ${longitude}`)
+                    .openPopup();
+                // Reset form fields
+                document.getElementById('deviceName').value = '';
+                document.getElementById('latitude').value = '';
+                document.getElementById('longitude').value = '';
+            } else {
+                alert('Please enter valid data for all fields.');
+            }
+        }
+
+        // Matrix background animation
+        function createMatrixEffect() {
+            const matrixContainer = document.getElementById('matrixBg');
+            const columns = Math.floor(window.innerWidth / 20);
+            const rows = Math.floor(window.innerHeight / 20);
+
+            for (let i = 0; i < columns; i++) {
+                const columnDiv = document.createElement('div');
+                columnDiv.classList.add('matrix-column');
+                columnDiv.style.animationDuration = `${Math.random() * 3 + 2}s`;
+
+                // Generate random "encryption" symbols for matrix effect
+                for (let j = 0; j < rows; j++) {
+                    const character = document.createElement('div');
+                    character.innerText = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
+                    columnDiv.appendChild(character);
+                }
+
+                matrixContainer.appendChild(columnDiv);
+            }
+        }
+
+        // Initialize Matrix Effect
+        createMatrixEffect();
+    </script>
+</body>
+</html>
